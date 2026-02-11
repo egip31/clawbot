@@ -7,6 +7,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const TELEGRAM_TOKEN = process.env.BOT_TOKEN?.trim();
 const GROQ_KEY = process.env.GROQ_API_KEY?.trim();
+const DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN;
 
 if (!TELEGRAM_TOKEN) {
   console.error("BOT_TOKEN is missing!");
@@ -18,11 +19,18 @@ if (!GROQ_KEY) {
   process.exit(1);
 }
 
+if (!DOMAIN) {
+  console.error("RAILWAY_PUBLIC_DOMAIN is missing!");
+  process.exit(1);
+}
+
 const bot = new TelegramBot(TELEGRAM_TOKEN);
-const url = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+const webhookURL = `https://${DOMAIN}/bot${TELEGRAM_TOKEN}`;
 
 // Set webhook
-bot.setWebHook(`${url}/bot${TELEGRAM_TOKEN}`);
+bot.setWebHook(webhookURL)
+  .then(() => console.log("Webhook set to:", webhookURL))
+  .catch(err => console.error("Webhook error:", err));
 
 // Webhook endpoint
 app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
@@ -30,7 +38,7 @@ app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
   res.sendStatus(200);
 });
 
-// AI Reply Logic using Groq
+// AI Reply Logic
 bot.on("message", async (msg) => {
   try {
     const chatId = msg.chat.id;
@@ -48,6 +56,8 @@ bot.on("message", async (msg) => {
       },
       body: JSON.stringify({
         model: "llama3-8b-8192",
+        temperature: 0.7,
+        max_tokens: 500,
         messages: [
           {
             role: "system",
@@ -62,18 +72,23 @@ bot.on("message", async (msg) => {
     });
 
     const data = await response.json();
+    console.log("Groq Response:", data);
 
-    if (!data.choices) {
-      console.error(data);
-      return bot.sendMessage(chatId, "⚠️ Groq error.");
+    if (!response.ok) {
+      console.error("Groq API Error:", data);
+      return bot.sendMessage(chatId, "⚠️ Groq API error.");
     }
 
-    const reply = data.choices[0].message.content;
+    const reply = data.choices?.[0]?.message?.content;
+
+    if (!reply) {
+      return bot.sendMessage(chatId, "⚠️ No response from AI.");
+    }
 
     await bot.sendMessage(chatId, reply);
 
   } catch (error) {
-    console.error("Groq Error:", error);
+    console.error("Groq Fatal Error:", error);
     await bot.sendMessage(msg.chat.id, "⚠️ Error processing request.");
   }
 });
