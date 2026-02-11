@@ -5,21 +5,24 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const token = process.env.BOT_TOKEN;
+
+const token = process.env.BOT_TOKEN?.trim();
+
+if (!token) {
+  console.error("BOT_TOKEN is missing!");
+  process.exit(1);
+}
 
 const bot = new TelegramBot(token);
-const url = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN;
+const url = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
 
-// Set webhook
 bot.setWebHook(`${url}/bot${token}`);
 
-// Endpoint webhook
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// Balas pesan
 bot.on("message", (msg) => {
   bot.sendMessage(msg.chat.id, "Halo 👋 Bot sudah aktif via webhook!");
 });
