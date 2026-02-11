@@ -1,12 +1,18 @@
 {
   "name": "clawdbot",
   "version": "1.0.0",
+  "description": "Telegram AI Bot powered by OpenAI",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.18.2",
-    "node-telegram-bot-api": "^0.64.0"
+    "node-telegram-bot-api": "^0.64.0",
+    "openai": "^4.56.0"
   }
 }
